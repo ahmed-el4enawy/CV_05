@@ -8,13 +8,7 @@ and performance metrics. All core algorithms run in C++ via cv_core.
 import os
 import random
 
-# Optional imports — graceful fallback
-try:
-    import numpy as np
-    HAS_NUMPY = True
-except ImportError:
-    HAS_NUMPY = False
-
+# Optional import — graceful fallback
 try:
     import matplotlib
     matplotlib.use("Agg")
