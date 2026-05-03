@@ -1,0 +1,342 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV_03 — Feature Detection, Descriptors & Matching</title>
+    <meta name="description" content="Computer Vision Assignment 3: Harris corner detection, SIFT descriptors, and feature matching using SSD and NCC — all from scratch in C++">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+
+<div class="app" id="app">
+
+    <!-- ═══ TOP NAV BAR ═══ -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <h1 class="logo">
+                <span class="logo-icon">◈</span>
+                CV_03
+            </h1>
+            <span class="logo-sub">Feature Detection & Matching</span>
+        </div>
+        <nav class="tab-nav" id="tab-nav">
+            <button class="tab-btn active" data-tab="features" id="tab-btn-features">
+                <span class="tab-icon">⬡</span>
+                Feature Detection
+            </button>
+            <button class="tab-btn" data-tab="sift" id="tab-btn-sift">
+                <span class="tab-icon">◉</span>
+                SIFT Descriptors
+            </button>
+            <button class="tab-btn" data-tab="matching" id="tab-btn-matching">
+                <span class="tab-icon">⇋</span>
+                Feature Matching
+            </button>
+        </nav>
+    </header>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <div class="main-container">
+
+        <!-- ──── TAB 1: FEATURE DETECTION ──── -->
+        <section class="tab-panel active" id="panel-features">
+            <div class="panel-layout">
+                <!-- Controls -->
+                <aside class="controls-panel">
+                    <div class="control-card">
+                        <h3 class="card-title">
+                            <span class="card-icon">📁</span>
+                            Upload Image
+                        </h3>
+                        <label class="upload-zone" id="upload-zone-features">
+                            <input type="file" id="input-features" accept="image/*" hidden>
+                            <div class="upload-content">
+                                <span class="upload-icon">⬆</span>
+                                <span class="upload-text" id="upload-text-features">Drop image or click</span>
+                            </div>
+                        </label>
+                        <img id="thumb-features" class="thumb" src="" alt="" hidden>
+                    </div>
+
+                    <div class="control-card">
+                        <h3 class="card-title">
+                            <span class="card-icon">⚙</span>
+                            Harris Parameters
+                        </h3>
+                        <div class="ctrl" data-key="k">
+                            <label>k (sensitivity)</label>
+                            <input type="range" min="0.01" max="0.2" step="0.01" value="0.04">
+                            <span class="val">0.04</span>
+                        </div>
+                        <div class="ctrl" data-key="threshold">
+                            <label>Threshold</label>
+                            <input type="range" min="1000" max="5000000" step="10000" value="1000000">
+                            <span class="val">1000000</span>
+                        </div>
+                        <div class="ctrl" data-key="nms_radius">
+                            <label>NMS Radius</label>
+                            <input type="range" min="1" max="20" step="1" value="5">
+                            <span class="val">5</span>
+                        </div>
+                    </div>
+
+                    <div class="control-card">
+                        <h3 class="card-title">
+                            <span class="card-icon">⚙</span>
+                            λ⁻ Parameters
+                        </h3>
+                        <div class="ctrl" data-key="lambda_threshold">
+                            <label>Threshold</label>
+                            <input type="range" min="100" max="500000" step="1000" value="10000">
+                            <span class="val">10000</span>
+                        </div>
+                        <div class="ctrl" data-key="lambda_nms_radius">
+                            <label>NMS Radius</label>
+                            <input type="range" min="1" max="20" step="1" value="5">
+                            <span class="val">5</span>
+                        </div>
+                    </div>
+
+                    <button id="btn-detect" class="run-btn" disabled>
+                        <span class="btn-icon">▶</span>
+                        Detect Features
+                    </button>
+                </aside>
+
+                <!-- Results -->
+                <main class="results-area">
+                    <div id="results-features" class="results-grid" hidden>
+                        <div class="result-card">
+                            <div class="result-header">
+                                <h3>Original</h3>
+                            </div>
+                            <img id="img-feat-original" src="" alt="Original">
+                        </div>
+                        <div class="result-card">
+                            <div class="result-header">
+                                <h3>Harris Corners</h3>
+                                <div class="badges">
+                                    <span class="badge" id="harris-count">0 corners</span>
+                                    <span class="badge time-badge" id="harris-time">0 ms</span>
+                                </div>
+                            </div>
+                            <img id="img-harris" src="" alt="Harris">
+                        </div>
+                        <div class="result-card">
+                            <div class="result-header">
+                                <h3>λ⁻ Corners</h3>
+                                <div class="badges">
+                                    <span class="badge" id="lambda-count">0 corners</span>
+                                    <span class="badge time-badge" id="lambda-time">0 ms</span>
+                                </div>
+                            </div>
+                            <img id="img-lambda" src="" alt="Lambda-minus">
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </section>
+
+        <!-- ──── TAB 2: SIFT DESCRIPTORS ──── -->
+        <section class="tab-panel" id="panel-sift">
+            <div class="panel-layout">
+                <aside class="controls-panel">
+                    <div class="control-card">
+                        <h3 class="card-title">
+                            <span class="card-icon">📁</span>
+                            Upload Image
+                        </h3>
+                        <label class="upload-zone" id="upload-zone-sift">
+                            <input type="file" id="input-sift" accept="image/*" hidden>
+                            <div class="upload-content">
+                                <span class="upload-icon">⬆</span>
+                                <span class="upload-text" id="upload-text-sift">Drop image or click</span>
+                            </div>
+                        </label>
+                        <img id="thumb-sift" class="thumb" src="" alt="" hidden>
+                    </div>
+
+                    <div class="control-card">
+                        <h3 class="card-title">
+                            <span class="card-icon">⚙</span>
+                            SIFT Parameters
+                        </h3>
+                        <div class="ctrl" data-key="num_octaves">
+                            <label>Octaves</label>
+                            <input type="range" min="1" max="6" step="1" value="4">
+                            <span class="val">4</span>
+                        </div>
+                        <div class="ctrl" data-key="scales_per_octave">
+                            <label>Scales / Octave</label>
+                            <input type="range" min="1" max="5" step="1" value="3">
+                            <span class="val">3</span>
+                        </div>
+                        <div class="ctrl" data-key="contrast_threshold">
+                            <label>Contrast Threshold</label>
+                            <input type="range" min="0.01" max="0.1" step="0.005" value="0.04">
+                            <span class="val">0.04</span>
+                        </div>
+                        <div class="ctrl" data-key="edge_threshold">
+                            <label>Edge Threshold</label>
+                            <input type="range" min="3" max="30" step="1" value="10">
+                            <span class="val">10</span>
+                        </div>
+                    </div>
+
+                    <button id="btn-sift" class="run-btn" disabled>
+                        <span class="btn-icon">▶</span>
+                        Generate Descriptors
+                    </button>
+                </aside>
+
+                <main class="results-area">
+                    <div id="results-sift" class="results-grid" hidden>
+                        <div class="result-card">
+                            <div class="result-header">
+                                <h3>Original</h3>
+                            </div>
+                            <img id="img-sift-original" src="" alt="Original">
+                        </div>
+                        <div class="result-card">
+                            <div class="result-header">
+                                <h3>SIFT Keypoints</h3>
+                                <div class="badges">
+                                    <span class="badge" id="sift-count">0 keypoints</span>
+                                    <span class="badge dim-badge" id="sift-dim">128-D</span>
+                                    <span class="badge time-badge" id="sift-time">0 ms</span>
+                                </div>
+                            </div>
+                            <img id="img-sift" src="" alt="SIFT">
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </section>
+
+        <!-- ──── TAB 3: FEATURE MATCHING ──── -->
+        <section class="tab-panel" id="panel-matching">
+            <div class="panel-layout">
+                <aside class="controls-panel">
+                    <div class="control-card">
+                        <h3 class="card-title">
+                            <span class="card-icon">📁</span>
+                            Image 1
+                        </h3>
+                        <label class="upload-zone" id="upload-zone-match1">
+                            <input type="file" id="input-match1" accept="image/*" hidden>
+                            <div class="upload-content">
+                                <span class="upload-icon">⬆</span>
+                                <span class="upload-text" id="upload-text-match1">Drop image 1</span>
+                            </div>
+                        </label>
+                        <img id="thumb-match1" class="thumb" src="" alt="" hidden>
+                    </div>
+
+                    <div class="control-card">
+                        <h3 class="card-title">
+                            <span class="card-icon">📁</span>
+                            Image 2
+                        </h3>
+                        <label class="upload-zone" id="upload-zone-match2">
+                            <input type="file" id="input-match2" accept="image/*" hidden>
+                            <div class="upload-content">
+                                <span class="upload-icon">⬆</span>
+                                <span class="upload-text" id="upload-text-match2">Drop image 2</span>
+                            </div>
+                        </label>
+                        <img id="thumb-match2" class="thumb" src="" alt="" hidden>
+                    </div>
+
+                    <div class="control-card">
+                        <h3 class="card-title">
+                            <span class="card-icon">⚙</span>
+                            Matching Parameters
+                        </h3>
+                        <div class="ctrl" data-key="ratio_threshold">
+                            <label>SSD Ratio Threshold</label>
+                            <input type="range" min="0.3" max="0.95" step="0.05" value="0.75">
+                            <span class="val">0.75</span>
+                        </div>
+                        <div class="ctrl" data-key="ncc_threshold">
+                            <label>NCC Threshold</label>
+                            <input type="range" min="0.3" max="0.95" step="0.05" value="0.7">
+                            <span class="val">0.7</span>
+                        </div>
+                    </div>
+
+                    <div class="match-btn-group">
+                        <button id="btn-match-ssd" class="run-btn" disabled>
+                            <span class="btn-icon">▶</span>
+                            Match (SSD)
+                        </button>
+                        <button id="btn-match-ncc" class="run-btn ncc-btn" disabled>
+                            <span class="btn-icon">▶</span>
+                            Match (NCC)
+                        </button>
+                    </div>
+                </aside>
+
+                <main class="results-area">
+                    <div id="results-matching" hidden>
+                        <div class="match-stats-bar" id="match-stats-bar" hidden>
+                            <div class="stat-item">
+                                <span class="stat-label">Image 1 Keypoints</span>
+                                <span class="stat-value" id="match-kp1">—</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Image 2 Keypoints</span>
+                                <span class="stat-value" id="match-kp2">—</span>
+                            </div>
+                            <div class="stat-item highlight">
+                                <span class="stat-label">Matches Found</span>
+                                <span class="stat-value" id="match-count">—</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">SIFT Time (img1)</span>
+                                <span class="stat-value time-val" id="match-sift1-time">—</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">SIFT Time (img2)</span>
+                                <span class="stat-value time-val" id="match-sift2-time">—</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Matching Time</span>
+                                <span class="stat-value time-val" id="match-match-time">—</span>
+                            </div>
+                            <div class="stat-item highlight">
+                                <span class="stat-label">Total Time</span>
+                                <span class="stat-value time-val" id="match-total-time">—</span>
+                            </div>
+                        </div>
+
+                        <div class="result-card full-width">
+                            <div class="result-header">
+                                <h3 id="match-method-title">Feature Matches</h3>
+                            </div>
+                            <img id="img-matches" src="" alt="Matches">
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loader" class="loader-overlay" hidden>
+        <div class="loader-card">
+            <div class="spinner"></div>
+            <span class="loader-text">Processing…</span>
+        </div>
+    </div>
+
+</div>
+
+<script src="{% static 'js/app.js' %}"></script>
+</body>
+</html>
