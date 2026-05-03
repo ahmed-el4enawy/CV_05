@@ -244,7 +244,18 @@ py::dict detect_faces_api(const std::string& in, const std::string& out,
                           int min_size, int max_size)
 {
     Timer timer;
-    cv::Mat img = load_image(in, "color");
+    cv::Mat img = load_image(in, "unchanged");
+    // Ensure we have either 1 or 3 channels for the face detector
+    if (img.channels() == 4) {
+        // BGRA → BGR: drop alpha channel manually
+        cv::Mat bgr(img.rows, img.cols, CV_8UC3);
+        for (int y = 0; y < img.rows; ++y)
+            for (int x = 0; x < img.cols; ++x) {
+                cv::Vec4b p = img.at<cv::Vec4b>(y, x);
+                bgr.at<cv::Vec3b>(y, x) = cv::Vec3b(p[0], p[1], p[2]);
+            }
+        img = bgr;
+    }
     auto boxes = face::detect_faces(img, min_size, max_size);
     cv::Mat canvas = face::draw_boxes(img, boxes);
     save_image(out, canvas);
@@ -364,7 +375,7 @@ py::dict batch_recognize_api(const std::vector<std::string>& test_paths,
     result["predictions"] = preds;
     result["distances"] = dists;
     result["true_labels"] = true_labels;
-    result["accuracy"] = (double)correct / true_labels.size();
+    result["accuracy"] = true_labels.empty() ? 0.0 : (double)correct / true_labels.size();
     result["correct"] = correct;
     result["total"] = (int)true_labels.size();
     result["time_ms"] = timer.elapsed_ms();

@@ -1,6 +1,8 @@
 #pragma once
 #include "cv_custom_algorithms.h"
 #include <map>
+#include <numeric>
+#include <algorithm>
 
 namespace face {
 
@@ -170,7 +172,7 @@ inline std::vector<BoundingBox> detect_faces_gray(const cv::Mat& gray, int min_s
     std::vector<BoundingBox> cands;
     for(int sz=min_sz;sz<=max_sz;sz=(int)(sz*1.3)) {
         int ww=sz, hh=(int)(sz*1.3);
-        int step=sz/4;
+        int step=std::max(1,sz/4);
         for(int y=0;y+hh<gray.rows;y+=step) for(int x=0;x+ww<gray.cols;x+=step) {
             double area=ww*hh;
             double ed=rect_sum(y,x,y+hh,x+ww)/area;
@@ -181,11 +183,14 @@ inline std::vector<BoundingBox> detect_faces_gray(const cv::Mat& gray, int min_s
             double right_e=rect_sum(y,mid,y+hh,x+ww);
             double sym=1.0-std::abs(left_e-right_e)/(left_e+right_e+1e-10);
             if(sym<0.6) continue;
-            // Top should be darker than bottom (hair vs chin) - heuristic
-            double top=rect_sum(y,x,y+hh/3,x+ww)/(ww*hh/3.0);
-            double bot=rect_sum(y+2*hh/3,x,y+hh,x+ww)/(ww*hh/3.0);
-            double score=sym*0.5+std::min(1.0,ed/30.0)*0.5;
-            if(score>0.4) cands.push_back({x,y,ww,hh,score});
+            // Vertical structure: middle band (eye region) has more edges
+            double top_e=rect_sum(y,x,y+hh/3,x+ww)/(ww*hh/3.0);
+            double mid_e=rect_sum(y+hh/3,x,y+2*hh/3,x+ww)/(ww*hh/3.0);
+            double bot_e=rect_sum(y+2*hh/3,x,y+hh,x+ww)/(ww*hh/3.0);
+            // Face heuristic: middle band (eyes/nose) should have highest edge density
+            double vert_score=(mid_e>top_e&&mid_e>bot_e)?1.0:0.5;
+            double score=sym*0.35+std::min(1.0,ed/30.0)*0.35+vert_score*0.3;
+            if(score>0.5) cands.push_back({x,y,ww,hh,score});
         }
     }
     return nms(cands, 0.3);

@@ -1,12 +1,13 @@
 #pragma once
 /**
- * cv_custom_algorithms.h — From-scratch CV algorithms for CV_03
+ * cv_custom_algorithms.h — From-scratch CV algorithms (legacy from CV_03)
  *
- * Assignment 3: Feature Detection, Descriptors & Matching
+ * Feature Detection, Descriptors & Matching:
  *   1. Harris Corner Detection + λ⁻
  *   2. SIFT Feature Descriptors
  *   3. Feature Matching (SSD + NCC)
  *
+ * Used by CV_05 as foundation algorithms.
  * OpenCV is used ONLY for cv::Mat storage and basic types.
  * All algorithmic logic is implemented from scratch.
  */

@@ -12,6 +12,9 @@ build/
 # Media (uploaded/result images)
 media/
 
+# Datasets (large binary files)
+datasets/
+
 # IDE
 .idea/
 .vscode/

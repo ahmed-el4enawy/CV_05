@@ -6,10 +6,7 @@ and performance metrics. All core algorithms run in C++ via cv_core.
 """
 
 import os
-import glob
 import random
-import math
-import json
 
 # Optional imports — graceful fallback
 try:
@@ -263,18 +260,6 @@ def generate_confusion_matrix_plot(true_labels, pred_labels, output_path, max_la
                 facecolor=fig.get_facecolor(), edgecolor="none")
     plt.close(fig)
     return True
-
-
-def generate_cmc_plot(true_labels, all_distances_per_query, output_path):
-    """
-    Generate CMC (Cumulative Match Characteristic) curve.
-    For simplicity, we compute rank-N accuracy from predictions and distances.
-    """
-    if not HAS_MPL:
-        return False
-    # Placeholder — would need full distance matrix for proper CMC
-    return False
-
 
 # ── Full Evaluation Pipeline ─────────────────────────────────────
 

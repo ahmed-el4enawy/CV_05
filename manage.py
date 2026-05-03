@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Django's command-line utility for CV_02."""
+"""Django's command-line utility for CV_05."""
 import os
 import sys
 

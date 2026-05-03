@@ -1,4 +1,4 @@
-"""WSGI config for CV_02."""
+"""WSGI config for CV_05."""
 import os
 from django.core.wsgi import get_wsgi_application
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "cv_project.settings")
