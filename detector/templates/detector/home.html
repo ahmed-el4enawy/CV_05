@@ -1,342 +1,254 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV_03 — Feature Detection, Descriptors & Matching</title>
-    <meta name="description" content="Computer Vision Assignment 3: Harris corner detection, SIFT descriptors, and feature matching using SSD and NCC — all from scratch in C++">
+    <title>CV_05 — Face Detection &amp; Recognition</title>
+    <meta name="description" content="Computer Vision Project 5: Face Detection and Recognition using PCA/Eigenfaces">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    {% load static %}
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-
-<div class="app" id="app">
-
-    <!-- ═══ TOP NAV BAR ═══ -->
-    <header class="topbar">
-        <div class="topbar-left">
-            <h1 class="logo">
-                <span class="logo-icon">◈</span>
-                CV_03
-            </h1>
-            <span class="logo-sub">Feature Detection & Matching</span>
+    <header class="header">
+        <div class="header-content">
+            <h1 class="logo">CV<span class="accent">_05</span></h1>
+            <p class="subtitle">Face Detection &amp; Recognition · Eigenfaces / PCA</p>
         </div>
-        <nav class="tab-nav" id="tab-nav">
-            <button class="tab-btn active" data-tab="features" id="tab-btn-features">
-                <span class="tab-icon">⬡</span>
-                Feature Detection
-            </button>
-            <button class="tab-btn" data-tab="sift" id="tab-btn-sift">
-                <span class="tab-icon">◉</span>
-                SIFT Descriptors
-            </button>
-            <button class="tab-btn" data-tab="matching" id="tab-btn-matching">
-                <span class="tab-icon">⇋</span>
-                Feature Matching
-            </button>
-        </nav>
     </header>
 
-    <!-- ═══ MAIN CONTENT ═══ -->
-    <div class="main-container">
+    <nav class="tab-bar" id="tabBar">
+        <button class="tab active" data-tab="detection">🔍 Face Detection</button>
+        <button class="tab" data-tab="recognition">🧠 Recognition</button>
+        <button class="tab" data-tab="evaluation">📊 Evaluation &amp; ROC</button>
+        <button class="tab" data-tab="features">⚡ Feature Detection</button>
+        <button class="tab" data-tab="sift">🎯 SIFT</button>
+        <button class="tab" data-tab="matching">🔗 Matching</button>
+    </nav>
 
-        <!-- ──── TAB 1: FEATURE DETECTION ──── -->
-        <section class="tab-panel active" id="panel-features">
-            <div class="panel-layout">
-                <!-- Controls -->
-                <aside class="controls-panel">
-                    <div class="control-card">
-                        <h3 class="card-title">
-                            <span class="card-icon">📁</span>
-                            Upload Image
-                        </h3>
-                        <label class="upload-zone" id="upload-zone-features">
-                            <input type="file" id="input-features" accept="image/*" hidden>
-                            <div class="upload-content">
-                                <span class="upload-icon">⬆</span>
-                                <span class="upload-text" id="upload-text-features">Drop image or click</span>
-                            </div>
-                        </label>
-                        <img id="thumb-features" class="thumb" src="" alt="" hidden>
+    <main class="container">
+
+        <!-- ═══ TAB 1: Face Detection ═══ -->
+        <section class="panel" id="panel-detection">
+            <div class="panel-grid">
+                <div class="controls-card">
+                    <h2>Face Detection</h2>
+                    <p class="desc">Upload an image to detect faces. Supports both color (skin-based) and grayscale (edge-based) detection.</p>
+                    <div class="upload-zone" id="uploadFace">
+                        <span class="upload-icon">📷</span>
+                        <span>Drop image or click to upload</span>
+                        <input type="file" accept="image/*" id="fileFace" hidden>
                     </div>
-
-                    <div class="control-card">
-                        <h3 class="card-title">
-                            <span class="card-icon">⚙</span>
-                            Harris Parameters
-                        </h3>
-                        <div class="ctrl" data-key="k">
-                            <label>k (sensitivity)</label>
-                            <input type="range" min="0.01" max="0.2" step="0.01" value="0.04">
-                            <span class="val">0.04</span>
-                        </div>
-                        <div class="ctrl" data-key="threshold">
-                            <label>Threshold</label>
-                            <input type="range" min="1000" max="5000000" step="10000" value="1000000">
-                            <span class="val">1000000</span>
-                        </div>
-                        <div class="ctrl" data-key="nms_radius">
-                            <label>NMS Radius</label>
-                            <input type="range" min="1" max="20" step="1" value="5">
-                            <span class="val">5</span>
-                        </div>
-                    </div>
-
-                    <div class="control-card">
-                        <h3 class="card-title">
-                            <span class="card-icon">⚙</span>
-                            λ⁻ Parameters
-                        </h3>
-                        <div class="ctrl" data-key="lambda_threshold">
-                            <label>Threshold</label>
-                            <input type="range" min="100" max="500000" step="1000" value="10000">
-                            <span class="val">10000</span>
-                        </div>
-                        <div class="ctrl" data-key="lambda_nms_radius">
-                            <label>NMS Radius</label>
-                            <input type="range" min="1" max="20" step="1" value="5">
-                            <span class="val">5</span>
-                        </div>
-                    </div>
-
-                    <button id="btn-detect" class="run-btn" disabled>
-                        <span class="btn-icon">▶</span>
-                        Detect Features
-                    </button>
-                </aside>
-
-                <!-- Results -->
-                <main class="results-area">
-                    <div id="results-features" class="results-grid" hidden>
-                        <div class="result-card">
-                            <div class="result-header">
-                                <h3>Original</h3>
-                            </div>
-                            <img id="img-feat-original" src="" alt="Original">
-                        </div>
-                        <div class="result-card">
-                            <div class="result-header">
-                                <h3>Harris Corners</h3>
-                                <div class="badges">
-                                    <span class="badge" id="harris-count">0 corners</span>
-                                    <span class="badge time-badge" id="harris-time">0 ms</span>
-                                </div>
-                            </div>
-                            <img id="img-harris" src="" alt="Harris">
-                        </div>
-                        <div class="result-card">
-                            <div class="result-header">
-                                <h3>λ⁻ Corners</h3>
-                                <div class="badges">
-                                    <span class="badge" id="lambda-count">0 corners</span>
-                                    <span class="badge time-badge" id="lambda-time">0 ms</span>
-                                </div>
-                            </div>
-                            <img id="img-lambda" src="" alt="Lambda-minus">
-                        </div>
-                    </div>
-                </main>
+                    <div class="preview-small" id="previewFace"></div>
+                    <label class="slider-label">Min Face Size: <span id="valMinSize">30</span>px
+                        <input type="range" min="10" max="200" value="30" id="sliderMinSize">
+                    </label>
+                    <label class="slider-label">Max Face Size: <span id="valMaxSize">0</span> (0=auto)
+                        <input type="range" min="0" max="800" value="0" id="sliderMaxSize">
+                    </label>
+                    <button class="btn btn-primary" id="btnDetectFaces">Detect Faces</button>
+                    <div class="status" id="statusFace"></div>
+                </div>
+                <div class="result-card">
+                    <h3>Detection Result</h3>
+                    <div class="result-image" id="resultFace"></div>
+                    <div class="badges" id="badgesFace"></div>
+                </div>
             </div>
         </section>
 
-        <!-- ──── TAB 2: SIFT DESCRIPTORS ──── -->
-        <section class="tab-panel" id="panel-sift">
-            <div class="panel-layout">
-                <aside class="controls-panel">
-                    <div class="control-card">
-                        <h3 class="card-title">
-                            <span class="card-icon">📁</span>
-                            Upload Image
-                        </h3>
-                        <label class="upload-zone" id="upload-zone-sift">
-                            <input type="file" id="input-sift" accept="image/*" hidden>
-                            <div class="upload-content">
-                                <span class="upload-icon">⬆</span>
-                                <span class="upload-text" id="upload-text-sift">Drop image or click</span>
-                            </div>
-                        </label>
-                        <img id="thumb-sift" class="thumb" src="" alt="" hidden>
-                    </div>
+        <!-- ═══ TAB 2: Recognition ═══ -->
+        <section class="panel hidden" id="panel-recognition">
+            <div class="panel-grid">
+                <div class="controls-card">
+                    <h2>Face Recognition</h2>
+                    <p class="desc">Train a PCA/Eigenfaces model on a face dataset, then recognize test faces.</p>
 
-                    <div class="control-card">
-                        <h3 class="card-title">
-                            <span class="card-icon">⚙</span>
-                            SIFT Parameters
-                        </h3>
-                        <div class="ctrl" data-key="num_octaves">
-                            <label>Octaves</label>
-                            <input type="range" min="1" max="6" step="1" value="4">
-                            <span class="val">4</span>
-                        </div>
-                        <div class="ctrl" data-key="scales_per_octave">
-                            <label>Scales / Octave</label>
-                            <input type="range" min="1" max="5" step="1" value="3">
-                            <span class="val">3</span>
-                        </div>
-                        <div class="ctrl" data-key="contrast_threshold">
-                            <label>Contrast Threshold</label>
-                            <input type="range" min="0.01" max="0.1" step="0.005" value="0.04">
-                            <span class="val">0.04</span>
-                        </div>
-                        <div class="ctrl" data-key="edge_threshold">
-                            <label>Edge Threshold</label>
-                            <input type="range" min="3" max="30" step="1" value="10">
-                            <span class="val">10</span>
-                        </div>
+                    <h3 class="section-title">1. Select Dataset</h3>
+                    <div class="dataset-selector">
+                        <select id="selectDataset" class="input-select">
+                            <option value="">Loading datasets...</option>
+                        </select>
+                        <button class="btn btn-small" id="btnRefreshDatasets">↻</button>
                     </div>
+                    <div id="datasetInfo" class="info-box"></div>
 
-                    <button id="btn-sift" class="run-btn" disabled>
-                        <span class="btn-icon">▶</span>
-                        Generate Descriptors
-                    </button>
-                </aside>
+                    <h3 class="section-title">2. Training Parameters</h3>
+                    <label class="slider-label">Train/Test Split: <span id="valSplit">70</span>%
+                        <input type="range" min="50" max="90" value="70" step="5" id="sliderSplit">
+                    </label>
+                    <label class="slider-label">PCA Components: <span id="valComp">0</span> (0=auto 95%)
+                        <input type="range" min="0" max="100" value="0" id="sliderComp">
+                    </label>
+                    <button class="btn btn-primary" id="btnTrain">Train Model</button>
+                    <div class="status" id="statusTrain"></div>
 
-                <main class="results-area">
-                    <div id="results-sift" class="results-grid" hidden>
-                        <div class="result-card">
-                            <div class="result-header">
-                                <h3>Original</h3>
-                            </div>
-                            <img id="img-sift-original" src="" alt="Original">
-                        </div>
-                        <div class="result-card">
-                            <div class="result-header">
-                                <h3>SIFT Keypoints</h3>
-                                <div class="badges">
-                                    <span class="badge" id="sift-count">0 keypoints</span>
-                                    <span class="badge dim-badge" id="sift-dim">128-D</span>
-                                    <span class="badge time-badge" id="sift-time">0 ms</span>
-                                </div>
-                            </div>
-                            <img id="img-sift" src="" alt="SIFT">
-                        </div>
+                    <h3 class="section-title">3. Recognize Face</h3>
+                    <div class="upload-zone" id="uploadRecog">
+                        <span class="upload-icon">🧑</span>
+                        <span>Upload face to recognize</span>
+                        <input type="file" accept="image/*" id="fileRecog" hidden>
                     </div>
-                </main>
+                    <div class="preview-small" id="previewRecog"></div>
+                    <label class="slider-label">Threshold: <span id="valThresh">5000</span>
+                        <input type="range" min="500" max="20000" value="5000" step="500" id="sliderThresh">
+                    </label>
+                    <button class="btn btn-accent" id="btnRecognize">Recognize</button>
+                    <div class="status" id="statusRecog"></div>
+                </div>
+                <div class="result-card">
+                    <h3>Training Results</h3>
+                    <div class="badges" id="badgesTrain"></div>
+                    <div class="eigenfaces-grid" id="eigenfacesGrid"></div>
+                    <h3>Recognition Result</h3>
+                    <div class="recognition-result" id="resultRecog"></div>
+                </div>
             </div>
         </section>
 
-        <!-- ──── TAB 3: FEATURE MATCHING ──── -->
-        <section class="tab-panel" id="panel-matching">
-            <div class="panel-layout">
-                <aside class="controls-panel">
-                    <div class="control-card">
-                        <h3 class="card-title">
-                            <span class="card-icon">📁</span>
-                            Image 1
-                        </h3>
-                        <label class="upload-zone" id="upload-zone-match1">
-                            <input type="file" id="input-match1" accept="image/*" hidden>
-                            <div class="upload-content">
-                                <span class="upload-icon">⬆</span>
-                                <span class="upload-text" id="upload-text-match1">Drop image 1</span>
-                            </div>
-                        </label>
-                        <img id="thumb-match1" class="thumb" src="" alt="" hidden>
+        <!-- ═══ TAB 3: Evaluation & ROC ═══ -->
+        <section class="panel hidden" id="panel-evaluation">
+            <div class="panel-grid">
+                <div class="controls-card">
+                    <h2>Performance Evaluation</h2>
+                    <p class="desc">Run full evaluation: train/test split, batch recognition, ROC curve, and metrics.</p>
+                    <div class="dataset-selector">
+                        <select id="selectDatasetEval" class="input-select">
+                            <option value="">Loading datasets...</option>
+                        </select>
                     </div>
-
-                    <div class="control-card">
-                        <h3 class="card-title">
-                            <span class="card-icon">📁</span>
-                            Image 2
-                        </h3>
-                        <label class="upload-zone" id="upload-zone-match2">
-                            <input type="file" id="input-match2" accept="image/*" hidden>
-                            <div class="upload-content">
-                                <span class="upload-icon">⬆</span>
-                                <span class="upload-text" id="upload-text-match2">Drop image 2</span>
-                            </div>
-                        </label>
-                        <img id="thumb-match2" class="thumb" src="" alt="" hidden>
-                    </div>
-
-                    <div class="control-card">
-                        <h3 class="card-title">
-                            <span class="card-icon">⚙</span>
-                            Matching Parameters
-                        </h3>
-                        <div class="ctrl" data-key="ratio_threshold">
-                            <label>SSD Ratio Threshold</label>
-                            <input type="range" min="0.3" max="0.95" step="0.05" value="0.75">
-                            <span class="val">0.75</span>
-                        </div>
-                        <div class="ctrl" data-key="ncc_threshold">
-                            <label>NCC Threshold</label>
-                            <input type="range" min="0.3" max="0.95" step="0.05" value="0.7">
-                            <span class="val">0.7</span>
-                        </div>
-                    </div>
-
-                    <div class="match-btn-group">
-                        <button id="btn-match-ssd" class="run-btn" disabled>
-                            <span class="btn-icon">▶</span>
-                            Match (SSD)
-                        </button>
-                        <button id="btn-match-ncc" class="run-btn ncc-btn" disabled>
-                            <span class="btn-icon">▶</span>
-                            Match (NCC)
-                        </button>
-                    </div>
-                </aside>
-
-                <main class="results-area">
-                    <div id="results-matching" hidden>
-                        <div class="match-stats-bar" id="match-stats-bar" hidden>
-                            <div class="stat-item">
-                                <span class="stat-label">Image 1 Keypoints</span>
-                                <span class="stat-value" id="match-kp1">—</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Image 2 Keypoints</span>
-                                <span class="stat-value" id="match-kp2">—</span>
-                            </div>
-                            <div class="stat-item highlight">
-                                <span class="stat-label">Matches Found</span>
-                                <span class="stat-value" id="match-count">—</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">SIFT Time (img1)</span>
-                                <span class="stat-value time-val" id="match-sift1-time">—</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">SIFT Time (img2)</span>
-                                <span class="stat-value time-val" id="match-sift2-time">—</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">Matching Time</span>
-                                <span class="stat-value time-val" id="match-match-time">—</span>
-                            </div>
-                            <div class="stat-item highlight">
-                                <span class="stat-label">Total Time</span>
-                                <span class="stat-value time-val" id="match-total-time">—</span>
-                            </div>
-                        </div>
-
-                        <div class="result-card full-width">
-                            <div class="result-header">
-                                <h3 id="match-method-title">Feature Matches</h3>
-                            </div>
-                            <img id="img-matches" src="" alt="Matches">
-                        </div>
-                    </div>
-                </main>
+                    <label class="slider-label">Train Ratio: <span id="valSplitEval">70</span>%
+                        <input type="range" min="50" max="90" value="70" step="5" id="sliderSplitEval">
+                    </label>
+                    <label class="slider-label">PCA Components: <span id="valCompEval">0</span> (0=auto)
+                        <input type="range" min="0" max="100" value="0" id="sliderCompEval">
+                    </label>
+                    <button class="btn btn-primary btn-large" id="btnEvaluate">Run Full Evaluation</button>
+                    <div class="status" id="statusEval"></div>
+                </div>
+                <div class="result-card">
+                    <h3>Evaluation Results</h3>
+                    <div class="metrics-grid" id="metricsGrid"></div>
+                    <div class="roc-container" id="rocContainer"></div>
+                    <div class="cm-container" id="cmContainer"></div>
+                    <div class="eigenfaces-grid" id="eigenfacesGridEval"></div>
+                </div>
             </div>
         </section>
 
-    </div>
+        <!-- ═══ TAB 4: Feature Detection (Legacy) ═══ -->
+        <section class="panel hidden" id="panel-features">
+            <div class="panel-grid">
+                <div class="controls-card">
+                    <h2>Feature Detection</h2>
+                    <p class="desc">Harris corners + λ⁻ detection (from CV_03).</p>
+                    <div class="upload-zone" id="uploadFeature">
+                        <span class="upload-icon">🖼️</span>
+                        <span>Upload image</span>
+                        <input type="file" accept="image/*" id="fileFeature" hidden>
+                    </div>
+                    <div class="preview-small" id="previewFeature"></div>
+                    <label class="slider-label">Harris k: <span id="valK">0.04</span>
+                        <input type="range" min="1" max="20" value="4" id="sliderK">
+                    </label>
+                    <label class="slider-label">Threshold: <span id="valHThresh">1000000</span>
+                        <input type="range" min="100000" max="10000000" value="1000000" step="100000" id="sliderHThresh">
+                    </label>
+                    <label class="slider-label">NMS Radius: <span id="valNMS">5</span>
+                        <input type="range" min="1" max="20" value="5" id="sliderNMS">
+                    </label>
+                    <button class="btn btn-primary" id="btnDetectFeatures">Detect Features</button>
+                    <div class="status" id="statusFeature"></div>
+                </div>
+                <div class="result-card">
+                    <h3>Harris Corners</h3>
+                    <div class="result-image" id="resultHarris"></div>
+                    <div class="badges" id="badgesHarris"></div>
+                    <h3>Lambda-Minus Corners</h3>
+                    <div class="result-image" id="resultLambda"></div>
+                    <div class="badges" id="badgesLambda"></div>
+                </div>
+            </div>
+        </section>
 
-    <!-- Loading overlay -->
-    <div id="loader" class="loader-overlay" hidden>
-        <div class="loader-card">
-            <div class="spinner"></div>
-            <span class="loader-text">Processing…</span>
-        </div>
-    </div>
+        <!-- ═══ TAB 5: SIFT (Legacy) ═══ -->
+        <section class="panel hidden" id="panel-sift">
+            <div class="panel-grid">
+                <div class="controls-card">
+                    <h2>SIFT Descriptors</h2>
+                    <div class="upload-zone" id="uploadSift">
+                        <span class="upload-icon">🎯</span>
+                        <span>Upload image</span>
+                        <input type="file" accept="image/*" id="fileSift" hidden>
+                    </div>
+                    <div class="preview-small" id="previewSift"></div>
+                    <label class="slider-label">Octaves: <span id="valOct">4</span>
+                        <input type="range" min="1" max="6" value="4" id="sliderOct">
+                    </label>
+                    <label class="slider-label">Scales: <span id="valScales">3</span>
+                        <input type="range" min="2" max="5" value="3" id="sliderScales">
+                    </label>
+                    <label class="slider-label">Contrast Thresh: <span id="valContrast">0.04</span>
+                        <input type="range" min="1" max="20" value="4" id="sliderContrast">
+                    </label>
+                    <label class="slider-label">Edge Thresh: <span id="valEdge">10</span>
+                        <input type="range" min="2" max="30" value="10" id="sliderEdge">
+                    </label>
+                    <button class="btn btn-primary" id="btnSift">Generate Descriptors</button>
+                    <div class="status" id="statusSift"></div>
+                </div>
+                <div class="result-card">
+                    <h3>SIFT Keypoints</h3>
+                    <div class="result-image" id="resultSift"></div>
+                    <div class="badges" id="badgesSift"></div>
+                </div>
+            </div>
+        </section>
 
-</div>
+        <!-- ═══ TAB 6: Matching (Legacy) ═══ -->
+        <section class="panel hidden" id="panel-matching">
+            <div class="panel-grid">
+                <div class="controls-card">
+                    <h2>Feature Matching</h2>
+                    <div class="upload-zone" id="uploadMatch1">
+                        <span class="upload-icon">1️⃣</span>
+                        <span>Image 1</span>
+                        <input type="file" accept="image/*" id="fileMatch1" hidden>
+                    </div>
+                    <div class="preview-small" id="previewMatch1"></div>
+                    <div class="upload-zone" id="uploadMatch2">
+                        <span class="upload-icon">2️⃣</span>
+                        <span>Image 2</span>
+                        <input type="file" accept="image/*" id="fileMatch2" hidden>
+                    </div>
+                    <div class="preview-small" id="previewMatch2"></div>
+                    <label class="slider-label">SSD Ratio: <span id="valRatio">0.75</span>
+                        <input type="range" min="40" max="95" value="75" id="sliderRatio">
+                    </label>
+                    <label class="slider-label">NCC Threshold: <span id="valNCC">0.7</span>
+                        <input type="range" min="30" max="95" value="70" id="sliderNCC">
+                    </label>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="btnSSD">Match (SSD)</button>
+                        <button class="btn btn-accent" id="btnNCC">Match (NCC)</button>
+                    </div>
+                    <div class="status" id="statusMatch"></div>
+                </div>
+                <div class="result-card">
+                    <h3>Match Result</h3>
+                    <div class="result-image" id="resultMatch"></div>
+                    <div class="badges" id="badgesMatch"></div>
+                </div>
+            </div>
+        </section>
+    </main>
 
-<script src="{% static 'js/app.js' %}"></script>
+    <footer class="footer">
+        <p>Cairo University · Faculty of Engineering · Systems &amp; Biomedical Engineering · Computer Vision (Assignment 5)</p>
+        <p>Team 12: Ahmed Salah Geoshy Elshenawy · Abdullah Mohammad Khalifa · Mohamed Elsayed Attallah</p>
+    </footer>
+
+    <script src="{% static 'js/app.js' %}"></script>
 </body>
 </html>

@@ -64,7 +64,7 @@ ext = Pybind11Extension(
 
 setup(
     name="cv_core",
-    version="0.2.0",
+    version="0.5.0",
     ext_modules=[ext],
     cmdclass={"build_ext": build_ext},
 )

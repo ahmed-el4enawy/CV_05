@@ -1,4 +1,4 @@
-"""Django settings for CV_03."""
+"""Django settings for CV_05 — Face Detection & Recognition."""
 
 from pathlib import Path
 
@@ -41,6 +41,9 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# ── Dataset directory ──
+DATASET_ROOT = BASE_DIR / "datasets"
 
 # No database needed
 DATABASES = {}

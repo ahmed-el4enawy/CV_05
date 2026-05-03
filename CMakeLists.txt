@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════
-#  CV_03 – Build configuration
+#  CV_05 – Build configuration
 #
 #  Prerequisites (set/found automatically via find_package):
 #    • OpenCV 4.x   – set OpenCV_DIR if not in default location
@@ -11,7 +11,7 @@
 # ═══════════════════════════════════════════════════════════════
 
 cmake_minimum_required(VERSION 3.15)
-project(CV_Three LANGUAGES CXX)
+project(CV_Five LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
