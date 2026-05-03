@@ -55,10 +55,6 @@ inline double get_pix(const cv::Mat& m, int y, int x) {
     return 0;
 }
 
-inline double get_pix_safe(const cv::Mat& m, int y, int x) {
-    if (y < 0 || y >= m.rows || x < 0 || x >= m.cols) return 0;
-    return get_pix(m, y, x);
-}
 
 inline void set_pixel_color(cv::Mat& img, int x, int y, const cv::Scalar& c) {
     if (x < 0 || x >= img.cols || y < 0 || y >= img.rows) return;
@@ -110,15 +106,6 @@ inline cv::Mat gaussian_blur(const cv::Mat& src, int ksize, double sigma) {
     return dst;
 }
 
-// Version that returns CV_8UC1 (for image output)
-inline cv::Mat gaussian_blur_u8(const cv::Mat& src, int ksize, double sigma) {
-    cv::Mat f64 = gaussian_blur(src, ksize, sigma);
-    cv::Mat dst(src.rows, src.cols, CV_8UC1);
-    for (int y = 0; y < src.rows; ++y)
-        for (int x = 0; x < src.cols; ++x)
-            dst.at<uchar>(y, x) = (uchar)std::clamp(f64.at<double>(y, x), 0.0, 255.0);
-    return dst;
-}
 
 /* ═══════════════════════════════════════════════════════════════════
  *  SOBEL OPERATOR (3×3, output CV_64F)
