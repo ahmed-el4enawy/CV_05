@@ -68,7 +68,7 @@ struct Timer {
 };
 
 // Global eigenface model (cached in memory)
-face::EigenfaceModel g_model;
+custom::EigenfaceModel g_model;
 bool g_model_loaded = false;
 
 } // anon
@@ -292,12 +292,12 @@ py::dict train_eigenfaces_api(const std::vector<std::string>& image_paths,
         faces.push_back(img);
     }
 
-    g_model = face::train_eigenfaces(faces, labels, num_components, face_h, face_w);
+    g_model = custom::train_eigenfaces(faces, labels, num_components, face_h, face_w);
     g_model_loaded = true;
 
     // Save mean face image
     ensure_parent_dir(model_out);
-    cv::Mat mean_img = face::mean_face_to_image(g_model.mean_face, g_model.face_h, g_model.face_w);
+    cv::Mat mean_img = custom::mean_face_to_image(g_model.mean_face, g_model.face_h, g_model.face_w);
     std::string mean_path = model_out + "_mean.png";
     save_image(mean_path, mean_img);
 
@@ -306,7 +306,7 @@ py::dict train_eigenfaces_api(const std::vector<std::string>& image_paths,
     int n_show = std::min(g_model.num_comp, 10);
     for (int i = 0; i < n_show; ++i) {
         cv::Mat row = g_model.eigenfaces.row(i);
-        cv::Mat ef_img = face::eigenface_to_image(row, g_model.face_h, g_model.face_w);
+        cv::Mat ef_img = custom::eigenface_to_image(row, g_model.face_h, g_model.face_w);
         std::string p = model_out + "_ef" + std::to_string(i) + ".png";
         save_image(p, ef_img);
         ef_paths.append(p);
@@ -335,7 +335,7 @@ py::dict recognize_face_api(const std::string& image_path, double threshold)
     cv::Mat img = cv::imread(image_path, cv::IMREAD_GRAYSCALE);
     if (img.empty()) throw std::runtime_error("Cannot read: " + image_path);
 
-    auto r = face::recognize_face(g_model, img, threshold);
+    auto r = custom::recognize_face(g_model, img, threshold);
 
     py::dict result;
     result["predicted_label"] = r.label;
@@ -365,7 +365,7 @@ py::dict batch_recognize_api(const std::vector<std::string>& test_paths,
 
     std::vector<int> preds;
     std::vector<double> dists;
-    face::batch_recognize(g_model, faces, true_labels, preds, dists);
+    custom::batch_recognize(g_model, faces, true_labels, preds, dists);
 
     int correct = 0;
     for (size_t i = 0; i < true_labels.size(); ++i)
@@ -462,7 +462,7 @@ EXPORT int ctypes_recognize_face(uint8_t* img_data, int rows, int cols, double* 
 {
     if (!g_model_loaded) return -1;
     cv::Mat img(rows, cols, CV_8UC1, img_data);
-    auto result = face::recognize_face(g_model, img, 5000.0);
+    auto result = custom::recognize_face(g_model, img, 5000.0);
     if (out_distance) *out_distance = result.distance;
     return result.label;
 }
