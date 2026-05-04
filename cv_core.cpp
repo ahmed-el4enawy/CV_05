@@ -2,10 +2,10 @@
  * cv_core – C++ computer vision operations for CV_05.
  *
  * Assignment 5: Face Detection & Recognition (PCA / Eigenfaces)
- * Plus legacy Assignment 3: Feature Detection, SIFT & Matching
  *
  * All algorithmic functions are implemented from scratch.
- * OpenCV is used ONLY for cv::Mat, cv::imread, and cv::imwrite (image I/O).
+ * OpenCV is used ONLY for cv::Mat, cv::imread, cv::imwrite (image I/O),
+ * and cv::CascadeClassifier (face detection — permitted per instructions).
  */
 
 #include <pybind11/pybind11.h>
@@ -74,170 +74,7 @@ bool g_model_loaded = false;
 } // anon
 
 /* ═══════════════════════════════════════════════════════════════════
- *  LEGACY: Harris Corner Detection
- * ═══════════════════════════════════════════════════════════════════ */
-
-py::dict harris_detect(const std::string& in,
-                       const std::string& out,
-                       double k_param,
-                       double threshold,
-                       int nms_radius)
-{
-    Timer timer;
-    cv::Mat color = load_image(in, "color");
-    cv::Mat gray = custom::to_grayscale(color);
-    auto corners = custom::harris_corners(gray, k_param, threshold, nms_radius);
-
-    cv::Mat canvas = color.clone();
-    for (auto& kp : corners) {
-        custom::draw_circle(canvas, {(int)kp.x, (int)kp.y}, 4, cv::Scalar(0, 0, 255), 1);
-        custom::draw_cross(canvas, {(int)kp.x, (int)kp.y}, 3, cv::Scalar(0, 255, 0), 1);
-    }
-    save_image(out, canvas);
-
-    py::dict result;
-    result["output"] = out;
-    result["corner_count"] = (int)corners.size();
-    result["time_ms"] = timer.elapsed_ms();
-    py::list corner_list;
-    for (auto& kp : corners) {
-        py::dict cp; cp["x"]=(int)kp.x; cp["y"]=(int)kp.y; cp["response"]=kp.response;
-        corner_list.append(cp);
-    }
-    result["corners"] = corner_list;
-    return result;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
- *  LEGACY: Lambda-Minus
- * ═══════════════════════════════════════════════════════════════════ */
-
-py::dict lambda_minus_detect(const std::string& in, const std::string& out,
-                             double threshold, int nms_radius)
-{
-    Timer timer;
-    cv::Mat color = load_image(in, "color");
-    cv::Mat gray = custom::to_grayscale(color);
-    auto corners = custom::lambda_minus_corners(gray, threshold, nms_radius);
-
-    cv::Mat canvas = color.clone();
-    for (auto& kp : corners) {
-        custom::draw_circle(canvas, {(int)kp.x, (int)kp.y}, 4, cv::Scalar(255, 0, 0), 1);
-        custom::draw_cross(canvas, {(int)kp.x, (int)kp.y}, 3, cv::Scalar(0, 255, 255), 1);
-    }
-    save_image(out, canvas);
-
-    py::dict result;
-    result["output"] = out;
-    result["corner_count"] = (int)corners.size();
-    result["time_ms"] = timer.elapsed_ms();
-    py::list corner_list;
-    for (auto& kp : corners) {
-        py::dict cp; cp["x"]=(int)kp.x; cp["y"]=(int)kp.y; cp["response"]=kp.response;
-        corner_list.append(cp);
-    }
-    result["corners"] = corner_list;
-    return result;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
- *  LEGACY: SIFT
- * ═══════════════════════════════════════════════════════════════════ */
-
-py::dict sift_detect(const std::string& in, const std::string& out,
-                     int num_octaves, int scales_per_octave,
-                     double contrast_threshold, double edge_threshold)
-{
-    Timer timer;
-    cv::Mat color = load_image(in, "color");
-    cv::Mat gray = custom::to_grayscale(color);
-
-    custom::SIFTParams params;
-    params.num_octaves = num_octaves;
-    params.scales_per_octave = scales_per_octave;
-    params.contrast_threshold = contrast_threshold;
-    params.edge_threshold = edge_threshold;
-
-    std::vector<custom::KeyPoint> keypoints;
-    std::vector<std::vector<double>> descriptors;
-    custom::sift_detect_and_describe(gray, keypoints, descriptors, params);
-
-    cv::Mat canvas = custom::draw_keypoints(color, keypoints, cv::Scalar(0, 255, 0), true);
-    save_image(out, canvas);
-
-    py::dict result;
-    result["output"] = out;
-    result["keypoint_count"] = (int)keypoints.size();
-    result["descriptor_dim"] = keypoints.empty() ? 128 : (int)descriptors[0].size();
-    result["time_ms"] = timer.elapsed_ms();
-    py::list kp_list;
-    for (size_t i = 0; i < keypoints.size(); ++i) {
-        py::dict kd;
-        kd["x"]=(int)keypoints[i].x; kd["y"]=(int)keypoints[i].y;
-        kd["scale"]=keypoints[i].scale;
-        kd["orientation"]=keypoints[i].orientation*180.0/custom::PI;
-        kp_list.append(kd);
-    }
-    result["keypoints"] = kp_list;
-    return result;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
- *  LEGACY: Feature Matching (SSD + NCC)
- * ═══════════════════════════════════════════════════════════════════ */
-
-py::dict match_features_ssd(const std::string& in1, const std::string& in2,
-                            const std::string& out, double ratio_threshold,
-                            int num_octaves, double contrast_threshold)
-{
-    Timer timer_total;
-    cv::Mat c1=load_image(in1,"color"), g1=custom::to_grayscale(c1);
-    cv::Mat c2=load_image(in2,"color"), g2=custom::to_grayscale(c2);
-    custom::SIFTParams params; params.num_octaves=num_octaves; params.contrast_threshold=contrast_threshold;
-
-    Timer t1; std::vector<custom::KeyPoint> kps1; std::vector<std::vector<double>> d1;
-    custom::sift_detect_and_describe(g1,kps1,d1,params); double s1=t1.elapsed_ms();
-    Timer t2; std::vector<custom::KeyPoint> kps2; std::vector<std::vector<double>> d2;
-    custom::sift_detect_and_describe(g2,kps2,d2,params); double s2=t2.elapsed_ms();
-    Timer tm; auto matches=custom::match_ssd(d1,d2,ratio_threshold); double mm=tm.elapsed_ms();
-
-    cv::Mat canvas=custom::draw_matches(c1,kps1,c2,kps2,matches);
-    save_image(out,canvas);
-
-    py::dict r;
-    r["output"]=out; r["kp_count_1"]=(int)kps1.size(); r["kp_count_2"]=(int)kps2.size();
-    r["match_count"]=(int)matches.size(); r["sift1_time_ms"]=s1; r["sift2_time_ms"]=s2;
-    r["match_time_ms"]=mm; r["total_time_ms"]=timer_total.elapsed_ms();
-    return r;
-}
-
-py::dict match_features_ncc(const std::string& in1, const std::string& in2,
-                            const std::string& out, double ncc_threshold,
-                            int num_octaves, double contrast_threshold)
-{
-    Timer timer_total;
-    cv::Mat c1=load_image(in1,"color"), g1=custom::to_grayscale(c1);
-    cv::Mat c2=load_image(in2,"color"), g2=custom::to_grayscale(c2);
-    custom::SIFTParams params; params.num_octaves=num_octaves; params.contrast_threshold=contrast_threshold;
-
-    Timer t1; std::vector<custom::KeyPoint> kps1; std::vector<std::vector<double>> d1;
-    custom::sift_detect_and_describe(g1,kps1,d1,params); double s1=t1.elapsed_ms();
-    Timer t2; std::vector<custom::KeyPoint> kps2; std::vector<std::vector<double>> d2;
-    custom::sift_detect_and_describe(g2,kps2,d2,params); double s2=t2.elapsed_ms();
-    Timer tm; auto matches=custom::match_ncc(d1,d2,ncc_threshold); double mm=tm.elapsed_ms();
-
-    cv::Mat canvas=custom::draw_matches(c1,kps1,c2,kps2,matches);
-    save_image(out,canvas);
-
-    py::dict r;
-    r["output"]=out; r["kp_count_1"]=(int)kps1.size(); r["kp_count_2"]=(int)kps2.size();
-    r["match_count"]=(int)matches.size(); r["sift1_time_ms"]=s1; r["sift2_time_ms"]=s2;
-    r["match_time_ms"]=mm; r["total_time_ms"]=timer_total.elapsed_ms();
-    return r;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
- *  NEW: Face Detection
+ *  Face Detection (OpenCV CascadeClassifier — permitted per instructions)
  * ═══════════════════════════════════════════════════════════════════ */
 
 py::dict detect_faces_api(const std::string& in, const std::string& out,
@@ -275,7 +112,7 @@ py::dict detect_faces_api(const std::string& in, const std::string& out,
 }
 
 /* ═══════════════════════════════════════════════════════════════════
- *  NEW: Train Eigenfaces
+ *  Train Eigenfaces (PCA — from scratch)
  * ═══════════════════════════════════════════════════════════════════ */
 
 py::dict train_eigenfaces_api(const std::vector<std::string>& image_paths,
@@ -323,7 +160,7 @@ py::dict train_eigenfaces_api(const std::vector<std::string>& image_paths,
 }
 
 /* ═══════════════════════════════════════════════════════════════════
- *  NEW: Recognize Face
+ *  Recognize Face
  * ═══════════════════════════════════════════════════════════════════ */
 
 py::dict recognize_face_api(const std::string& image_path, double threshold)
@@ -346,7 +183,7 @@ py::dict recognize_face_api(const std::string& image_path, double threshold)
 }
 
 /* ═══════════════════════════════════════════════════════════════════
- *  NEW: Batch Recognize (for evaluation / ROC)
+ *  Batch Recognize (for evaluation / ROC)
  * ═══════════════════════════════════════════════════════════════════ */
 
 py::dict batch_recognize_api(const std::vector<std::string>& test_paths,
@@ -386,33 +223,8 @@ py::dict batch_recognize_api(const std::vector<std::string>& test_paths,
 
 PYBIND11_MODULE(cv_core, m)
 {
-    m.doc() = "C++ custom CV core – CV_05: Face Detection & Recognition + Legacy CV_03";
+    m.doc() = "C++ custom CV core – CV_05: Face Detection & Recognition (PCA/Eigenfaces)";
 
-    // Legacy CV_03
-    m.def("harris_detect", &harris_detect, "Harris corner detection",
-          py::arg("input_path"), py::arg("output_path"),
-          py::arg("k")=0.04, py::arg("threshold")=1e6, py::arg("nms_radius")=5);
-
-    m.def("lambda_minus_detect", &lambda_minus_detect, "Lambda-minus corner detection",
-          py::arg("input_path"), py::arg("output_path"),
-          py::arg("threshold")=1e4, py::arg("nms_radius")=5);
-
-    m.def("sift_detect", &sift_detect, "SIFT keypoint detection",
-          py::arg("input_path"), py::arg("output_path"),
-          py::arg("num_octaves")=4, py::arg("scales_per_octave")=3,
-          py::arg("contrast_threshold")=0.04, py::arg("edge_threshold")=10.0);
-
-    m.def("match_features_ssd", &match_features_ssd, "SSD matching",
-          py::arg("input_path_1"), py::arg("input_path_2"), py::arg("output_path"),
-          py::arg("ratio_threshold")=0.75, py::arg("num_octaves")=4,
-          py::arg("contrast_threshold")=0.04);
-
-    m.def("match_features_ncc", &match_features_ncc, "NCC matching",
-          py::arg("input_path_1"), py::arg("input_path_2"), py::arg("output_path"),
-          py::arg("ncc_threshold")=0.7, py::arg("num_octaves")=4,
-          py::arg("contrast_threshold")=0.04);
-
-    // NEW CV_05
     m.def("detect_faces", &detect_faces_api, "Face detection (color + grayscale)",
           py::arg("input_path"), py::arg("output_path"),
           py::arg("min_size")=30, py::arg("max_size")=0);

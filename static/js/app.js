@@ -1,14 +1,10 @@
-/* ═══════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    CV_05 — Face Detection & Recognition — Frontend Logic
-   ═══════════════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════ */
 
 // ── State ──
 const state = {
     facePath: null,
-    featurePath: null,
-    siftPath: null,
-    match1Path: null,
-    match2Path: null,
     recogPath: null,
 };
 
@@ -112,15 +108,6 @@ function initSliders() {
         sliderThresh: { display: "valThresh" },
         sliderSplitEval: { display: "valSplitEval" },
         sliderCompEval: { display: "valCompEval" },
-        sliderK: { display: "valK", transform: (v) => (v / 100).toFixed(2) },
-        sliderHThresh: { display: "valHThresh" },
-        sliderNMS: { display: "valNMS" },
-        sliderOct: { display: "valOct" },
-        sliderScales: { display: "valScales" },
-        sliderContrast: { display: "valContrast", transform: (v) => (v / 100).toFixed(2) },
-        sliderEdge: { display: "valEdge" },
-        sliderRatio: { display: "valRatio", transform: (v) => (v / 100).toFixed(2) },
-        sliderNCC: { display: "valNCC", transform: (v) => (v / 100).toFixed(1) },
     };
 
     for (const [id, cfg] of Object.entries(sliders)) {
@@ -321,121 +308,6 @@ async function runEvaluation() {
     $("#btnEvaluate").disabled = false;
 }
 
-// ── Feature Detection (Legacy) ──
-async function detectFeatures() {
-    if (!state.featurePath) { setStatus("#statusFeature", "Upload an image first", "error"); return; }
-    setStatus("#statusFeature", "Detecting features...", "loading");
-    $("#btnDetectFeatures").disabled = true;
-
-    try {
-        const k = $("#sliderK").value / 100;
-        const thresh = $("#sliderHThresh").value;
-        const nms = $("#sliderNMS").value;
-
-        // Harris
-        const fd1 = new FormData();
-        fd1.append("image_path", state.featurePath);
-        fd1.append("k", k);
-        fd1.append("threshold", thresh);
-        fd1.append("nms_radius", nms);
-
-        const [harrisResp, lambdaResp] = await Promise.all([
-            fetch("/api/harris/", { method: "POST", body: fd1 }),
-            fetch("/api/lambda/", { method: "POST", body: (() => {
-                const fd = new FormData();
-                fd.append("image_path", state.featurePath);
-                fd.append("threshold", thresh / 100);
-                fd.append("nms_radius", nms);
-                return fd;
-            })() }),
-        ]);
-
-        const harris = await harrisResp.json();
-        const lambda = await lambdaResp.json();
-
-        showImage("#resultHarris", harris.output);
-        $("#badgesHarris").innerHTML = [
-            badge(`${harris.corner_count} corners`, "green"),
-            badge(`${harris.time_ms}ms`, "cyan"),
-        ].join("");
-
-        showImage("#resultLambda", lambda.output);
-        $("#badgesLambda").innerHTML = [
-            badge(`${lambda.corner_count} corners`, "purple"),
-            badge(`${lambda.time_ms}ms`, "cyan"),
-        ].join("");
-
-        setStatus("#statusFeature", "Done!", "success");
-    } catch (err) {
-        setStatus("#statusFeature", err.message, "error");
-    }
-    $("#btnDetectFeatures").disabled = false;
-}
-
-// ── SIFT (Legacy) ──
-async function runSift() {
-    if (!state.siftPath) { setStatus("#statusSift", "Upload an image first", "error"); return; }
-    setStatus("#statusSift", "Generating SIFT descriptors...", "loading");
-    $("#btnSift").disabled = true;
-
-    try {
-        const fd = new FormData();
-        fd.append("image_path", state.siftPath);
-        fd.append("num_octaves", $("#sliderOct").value);
-        fd.append("scales_per_octave", $("#sliderScales").value);
-        fd.append("contrast_threshold", $("#sliderContrast").value / 100);
-        fd.append("edge_threshold", $("#sliderEdge").value);
-
-        const resp = await fetch("/api/sift/", { method: "POST", body: fd });
-        const data = await resp.json();
-
-        showImage("#resultSift", data.output);
-        $("#badgesSift").innerHTML = [
-            badge(`${data.keypoint_count} keypoints`, "green"),
-            badge(`${data.descriptor_dim}D`, "purple"),
-            badge(`${data.time_ms}ms`, "cyan"),
-        ].join("");
-        setStatus("#statusSift", "Done!", "success");
-    } catch (err) {
-        setStatus("#statusSift", err.message, "error");
-    }
-    $("#btnSift").disabled = false;
-}
-
-// ── Matching (Legacy) ──
-async function runMatch(method) {
-    if (!state.match1Path || !state.match2Path) {
-        setStatus("#statusMatch", "Upload both images first", "error");
-        return;
-    }
-    setStatus("#statusMatch", `Matching (${method.toUpperCase()})...`, "loading");
-    $(`#btn${method.toUpperCase()}`).disabled = true;
-
-    try {
-        const fd = new FormData();
-        fd.append("image_path_1", state.match1Path);
-        fd.append("image_path_2", state.match2Path);
-        if (method === "ssd") fd.append("ratio_threshold", $("#sliderRatio").value / 100);
-        else fd.append("ncc_threshold", $("#sliderNCC").value / 100);
-
-        const url = method === "ssd" ? "/api/match-ssd/" : "/api/match-ncc/";
-        const resp = await fetch(url, { method: "POST", body: fd });
-        const data = await resp.json();
-
-        showImage("#resultMatch", data.output);
-        $("#badgesMatch").innerHTML = [
-            badge(`${data.match_count} matches`, "green"),
-            badge(`KP1: ${data.kp_count_1}`, "cyan"),
-            badge(`KP2: ${data.kp_count_2}`, "cyan"),
-            badge(`${data.total_time_ms}ms`, "orange"),
-        ].join("");
-        setStatus("#statusMatch", "Done!", "success");
-    } catch (err) {
-        setStatus("#statusMatch", err.message, "error");
-    }
-    $(`#btn${method.toUpperCase()}`).disabled = false;
-}
-
 // ═══════════════════════════════════════════════════════════
 //  INITIALIZATION
 // ═══════════════════════════════════════════════════════════
@@ -448,19 +320,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // Upload zones
     setupUpload("#uploadFace", "#fileFace", "#previewFace", "facePath");
     setupUpload("#uploadRecog", "#fileRecog", "#previewRecog", "recogPath");
-    setupUpload("#uploadFeature", "#fileFeature", "#previewFeature", "featurePath");
-    setupUpload("#uploadSift", "#fileSift", "#previewSift", "siftPath");
-    setupUpload("#uploadMatch1", "#fileMatch1", "#previewMatch1", "match1Path");
-    setupUpload("#uploadMatch2", "#fileMatch2", "#previewMatch2", "match2Path");
 
     // Buttons
     $("#btnDetectFaces").onclick = detectFaces;
     $("#btnTrain").onclick = trainModel;
     $("#btnRecognize").onclick = recognizeFace;
     $("#btnEvaluate").onclick = runEvaluation;
-    $("#btnDetectFeatures").onclick = detectFeatures;
-    $("#btnSift").onclick = runSift;
-    $("#btnSSD").onclick = () => runMatch("ssd");
-    $("#btnNCC").onclick = () => runMatch("ncc");
     $("#btnRefreshDatasets").onclick = loadDatasets;
 });

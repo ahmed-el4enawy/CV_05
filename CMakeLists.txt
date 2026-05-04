@@ -16,7 +16,10 @@ project(CV_Five LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(MSVC AND MSVC_VERSION GREATER_EQUAL 1950 AND NOT DEFINED OpenCV_RUNTIME)
+# Force vc16 runtime — OpenCV Windows Pack only ships MSVC binaries.
+# Without this, non-MSVC generators (Ninja, MinGW Makefiles) default to
+# "mingw" runtime which doesn't exist, causing find_package to fail.
+if(NOT DEFINED OpenCV_RUNTIME)
 	set(OpenCV_RUNTIME vc16)
 endif()
 
