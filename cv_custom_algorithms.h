@@ -17,7 +17,6 @@
 #include <cmath>
 #include <algorithm>
 #include <numeric>
-#include <functional>
 
 namespace custom {
 
@@ -43,48 +42,6 @@ inline void set_pixel_color(cv::Mat& img, int x, int y, const cv::Scalar& c) {
         img.at<cv::Vec3b>(y, x) = cv::Vec3b((uchar)c[0], (uchar)c[1], (uchar)c[2]);
     else
         img.at<uchar>(y, x) = (uchar)c[0];
-}
-
-/* ═══════════════════════════════════════════════════════════════════
- *  GAUSSIAN BLUR (separable, from scratch)
- * ═══════════════════════════════════════════════════════════════════ */
-
-inline std::vector<double> make_gaussian_kernel(int ksize, double sigma) {
-    int half = ksize / 2;
-    std::vector<double> k(ksize);
-    double sum = 0;
-    for (int i = 0; i < ksize; ++i) {
-        double x = i - half;
-        k[i] = std::exp(-(x * x) / (2.0 * sigma * sigma));
-        sum += k[i];
-    }
-    for (auto& v : k) v /= sum;
-    return k;
-}
-
-inline cv::Mat gaussian_blur(const cv::Mat& src, int ksize, double sigma) {
-    auto k = make_gaussian_kernel(ksize, sigma);
-    int half = ksize / 2;
-
-    // horizontal pass
-    cv::Mat tmp(src.rows, src.cols, CV_64FC1, cv::Scalar(0));
-    for (int y = 0; y < src.rows; ++y)
-        for (int x = 0; x < src.cols; ++x) {
-            double v = 0;
-            for (int i = -half; i <= half; ++i)
-                v += get_pix(src, y, std::clamp(x + i, 0, src.cols - 1)) * k[i + half];
-            tmp.at<double>(y, x) = v;
-        }
-    // vertical pass
-    cv::Mat dst(src.rows, src.cols, CV_64FC1, cv::Scalar(0));
-    for (int y = 0; y < src.rows; ++y)
-        for (int x = 0; x < src.cols; ++x) {
-            double v = 0;
-            for (int i = -half; i <= half; ++i)
-                v += tmp.at<double>(std::clamp(y + i, 0, src.rows - 1), x) * k[i + half];
-            dst.at<double>(y, x) = v;
-        }
-    return dst;
 }
 
 
@@ -159,32 +116,6 @@ inline void draw_line(cv::Mat& img, cv::Point p1, cv::Point p2,
     }
 }
 
-inline void draw_circle(cv::Mat& img, cv::Point cen, int rad,
-                        const cv::Scalar& col, int thick)
-{
-    if (thick < 0) { // filled
-        for (int y=-rad;y<=rad;++y)
-            for (int x=-rad;x<=rad;++x)
-                if (x*x+y*y<=rad*rad)
-                    set_pixel_color(img,cen.x+x,cen.y+y,col);
-        return;
-    }
-    int ri=std::max(0,rad-thick/2), ro=rad+(thick+1)/2;
-    int ri2=ri*ri, ro2=ro*ro;
-    for (int y=-ro;y<=ro;++y)
-        for (int x=-ro;x<=ro;++x) {
-            int d2=x*x+y*y;
-            if (d2>=ri2&&d2<=ro2)
-                set_pixel_color(img,cen.x+x,cen.y+y,col);
-        }
-}
-
-inline void draw_cross(cv::Mat& img, cv::Point cen, int size,
-                       const cv::Scalar& col, int thick)
-{
-    draw_line(img, {cen.x - size, cen.y}, {cen.x + size, cen.y}, col, thick);
-    draw_line(img, {cen.x, cen.y - size}, {cen.x, cen.y + size}, col, thick);
-}
 
 // ═══════════════════════════════════════════════════════════
 //  EIGENFACES / PCA (from scratch)

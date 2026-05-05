@@ -1,15 +1,11 @@
 #pragma once
 #include "cv_custom_algorithms.h"
-#include <map>
-#include <numeric>
-#include <algorithm>
 #include <opencv2/objdetect.hpp>
 #include <opencv2/imgproc.hpp>
 
 namespace face {
 
 struct BoundingBox { int x, y, w, h; double conf; };
-
 
 
 // ── Face Detection (OpenCV Cascade) ──
@@ -64,7 +60,5 @@ inline cv::Mat draw_boxes(const cv::Mat& img, const std::vector<BoundingBox>& bo
     }
     return canvas;
 }
-
-
 
 } // namespace face
