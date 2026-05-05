@@ -109,14 +109,13 @@ def api_detect_faces(request):
 
 @csrf_exempt
 def api_train_model(request):
-    """Train eigenface model on a dataset directory."""
+    """Train eigenface model on the dataset directory."""
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=400)
 
-    dataset_name = request.POST.get("dataset", "orl_faces")
-    dataset_dir = os.path.join(settings.DATASET_ROOT, dataset_name)
+    dataset_dir = str(settings.DATASET_ROOT)
     if not os.path.isdir(dataset_dir):
-        return JsonResponse({"error": f"Dataset not found: {dataset_name}"}, status=400)
+        return JsonResponse({"error": "Dataset folder not found"}, status=400)
 
     num_components = int(request.POST.get("num_components", 0))
     train_ratio = float(request.POST.get("train_ratio", 0.7))
@@ -127,7 +126,7 @@ def api_train_model(request):
         if not data:
             data = face_utils.load_generic_dataset(dataset_dir)
         if not data:
-            return JsonResponse({"error": "No images found"}, status=400)
+            return JsonResponse({"error": "No images found in dataset/ folder"}, status=400)
 
         train_paths, train_labels, test_paths, test_labels = \
             face_utils.stratified_split(data, train_ratio)
@@ -187,10 +186,9 @@ def api_evaluate(request):
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=400)
 
-    dataset_name = request.POST.get("dataset", "orl_faces")
-    dataset_dir = os.path.join(settings.DATASET_ROOT, dataset_name)
+    dataset_dir = str(settings.DATASET_ROOT)
     if not os.path.isdir(dataset_dir):
-        return JsonResponse({"error": f"Dataset not found: {dataset_name}"}, status=400)
+        return JsonResponse({"error": "Dataset folder not found"}, status=400)
 
     num_components = int(request.POST.get("num_components", 0))
     train_ratio = float(request.POST.get("train_ratio", 0.7))
@@ -235,27 +233,22 @@ def api_evaluate(request):
 
 
 @csrf_exempt
-def api_list_datasets(request):
-    """List available datasets in the datasets directory."""
+def api_dataset_info(request):
+    """Return info about the auto-loaded dataset/ folder."""
     dataset_root = str(settings.DATASET_ROOT)
-    datasets = []
+    subjects = 0
+    images = 0
     if os.path.isdir(dataset_root):
         for name in sorted(os.listdir(dataset_root)):
             path = os.path.join(dataset_root, name)
             if os.path.isdir(path):
-                # Count subjects and images
-                subjects = 0
-                images = 0
-                for sub in os.listdir(path):
-                    subpath = os.path.join(path, sub)
-                    if os.path.isdir(subpath):
-                        subjects += 1
-                        images += len([f for f in os.listdir(subpath)
-                                      if os.path.splitext(f)[1].lower()
-                                      in (".pgm", ".png", ".jpg", ".jpeg", ".bmp")])
-                datasets.append({
-                    "name": name,
-                    "subjects": subjects,
-                    "images": images,
-                })
-    return JsonResponse({"datasets": datasets})
+                subjects += 1
+                images += len([f for f in os.listdir(path)
+                               if os.path.splitext(f)[1].lower()
+                               in (".pgm", ".png", ".jpg", ".jpeg", ".bmp")])
+    return JsonResponse({
+        "name": "dataset",
+        "subjects": subjects,
+        "images": images,
+        "loaded": subjects > 0,
+    })

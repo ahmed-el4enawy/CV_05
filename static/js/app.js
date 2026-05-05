@@ -122,22 +122,26 @@ function initSliders() {
     }
 }
 
-// ── Datasets ──
-async function loadDatasets() {
+// ── Auto-load Dataset Info ──
+async function loadDatasetInfo() {
     try {
-        const resp = await fetch("/api/list-datasets/");
+        const resp = await fetch("/api/dataset-info/");
         const data = await resp.json();
-        const datasets = data.datasets || [];
 
-        for (const selId of ["#selectDataset", "#selectDatasetEval"]) {
-            const sel = $(selId);
-            if (!sel) continue;
-            sel.innerHTML = datasets.length
-                ? datasets.map((d) => `<option value="${d.name}">${d.name} (${d.subjects} subjects, ${d.images} images)</option>`).join("")
-                : '<option value="">No datasets found — add to datasets/ folder</option>';
+        const infoHtml = data.loaded
+            ? `✅ <strong>Dataset loaded:</strong> ${data.subjects} subjects, ${data.images} images`
+            : `⚠️ <strong>No dataset found.</strong> Add subject folders (s1, s2, ...) with face images to the <code>dataset/</code> folder.`;
+
+        for (const id of ["#datasetInfo", "#datasetInfoEval"]) {
+            const el = $(id);
+            if (el) el.innerHTML = infoHtml;
         }
     } catch (err) {
-        console.error("Error loading datasets:", err);
+        console.error("Error loading dataset info:", err);
+        for (const id of ["#datasetInfo", "#datasetInfoEval"]) {
+            const el = $(id);
+            if (el) el.innerHTML = "❌ Error loading dataset info";
+        }
     }
 }
 
@@ -176,14 +180,11 @@ async function detectFaces() {
 
 // ── Train Model ──
 async function trainModel() {
-    const dataset = $("#selectDataset").value;
-    if (!dataset) { setStatus("#statusTrain", "Select a dataset", "error"); return; }
     setStatus("#statusTrain", "Training eigenfaces model... This may take a moment.", "loading");
     $("#btnTrain").disabled = true;
 
     try {
         const fd = new FormData();
-        fd.append("dataset", dataset);
         fd.append("train_ratio", $("#sliderSplit").value / 100);
         fd.append("num_components", $("#sliderComp").value);
 
@@ -251,14 +252,11 @@ async function recognizeFace() {
 
 // ── Full Evaluation ──
 async function runEvaluation() {
-    const dataset = $("#selectDatasetEval").value;
-    if (!dataset) { setStatus("#statusEval", "Select a dataset", "error"); return; }
     setStatus("#statusEval", "Running full evaluation... This may take several minutes.", "loading");
     $("#btnEvaluate").disabled = true;
 
     try {
         const fd = new FormData();
-        fd.append("dataset", dataset);
         fd.append("train_ratio", $("#sliderSplitEval").value / 100);
         fd.append("num_components", $("#sliderCompEval").value);
 
@@ -315,7 +313,7 @@ async function runEvaluation() {
 document.addEventListener("DOMContentLoaded", () => {
     initTabs();
     initSliders();
-    loadDatasets();
+    loadDatasetInfo();
 
     // Upload zones
     setupUpload("#uploadFace", "#fileFace", "#previewFace", "facePath");
@@ -326,5 +324,4 @@ document.addEventListener("DOMContentLoaded", () => {
     $("#btnTrain").onclick = trainModel;
     $("#btnRecognize").onclick = recognizeFace;
     $("#btnEvaluate").onclick = runEvaluation;
-    $("#btnRefreshDatasets").onclick = loadDatasets;
 });

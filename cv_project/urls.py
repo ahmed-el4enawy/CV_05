@@ -14,5 +14,5 @@ urlpatterns = [
     path("api/train-model/",  views.api_train_model,   name="api_train_model"),
     path("api/recognize/",    views.api_recognize,     name="api_recognize"),
     path("api/evaluate/",     views.api_evaluate,      name="api_evaluate"),
-    path("api/list-datasets/",views.api_list_datasets, name="api_list_datasets"),
+    path("api/dataset-info/",views.api_dataset_info, name="api_dataset_info"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

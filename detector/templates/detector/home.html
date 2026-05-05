@@ -62,16 +62,11 @@
                     <h2>Face Recognition</h2>
                     <p class="desc">Train a PCA/Eigenfaces model on a face dataset, then recognize test faces.</p>
 
-                    <h3 class="section-title">1. Select Dataset</h3>
-                    <div class="dataset-selector">
-                        <select id="selectDataset" class="input-select">
-                            <option value="">Loading datasets...</option>
-                        </select>
-                        <button class="btn btn-small" id="btnRefreshDatasets">↻</button>
-                    </div>
-                    <div id="datasetInfo" class="info-box"></div>
 
-                    <h3 class="section-title">2. Training Parameters</h3>
+                    <div id="datasetInfo" class="info-box">Loading dataset info...</div>
+
+
+                    <h3 class="section-title">1. Training Parameters</h3>
                     <label class="slider-label">Train/Test Split: <span id="valSplit">70</span>%
                         <input type="range" min="50" max="90" value="70" step="5" id="sliderSplit">
                     </label>
@@ -81,7 +76,7 @@
                     <button class="btn btn-primary" id="btnTrain">Train Model</button>
                     <div class="status" id="statusTrain"></div>
 
-                    <h3 class="section-title">3. Recognize Face</h3>
+                    <h3 class="section-title">2. Recognize Face</h3>
                     <div class="upload-zone" id="uploadRecog">
                         <span class="upload-icon">🧑</span>
                         <span>Upload face to recognize</span>
@@ -110,11 +105,7 @@
                 <div class="controls-card">
                     <h2>Performance Evaluation</h2>
                     <p class="desc">Run full evaluation: train/test split, batch recognition, ROC curve, and metrics.</p>
-                    <div class="dataset-selector">
-                        <select id="selectDatasetEval" class="input-select">
-                            <option value="">Loading datasets...</option>
-                        </select>
-                    </div>
+                    <div id="datasetInfoEval" class="info-box">Loading dataset info...</div>
                     <label class="slider-label">Train Ratio: <span id="valSplitEval">70</span>%
                         <input type="range" min="50" max="90" value="70" step="5" id="sliderSplitEval">
                     </label>

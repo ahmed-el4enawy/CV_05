@@ -43,7 +43,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 # ── Dataset directory ──
-DATASET_ROOT = BASE_DIR / "datasets"
+DATASET_ROOT = BASE_DIR / "pretrained"
 
 # No database needed
 DATABASES = {}
